@@ -8,45 +8,47 @@ client = MongoClient(os.getenv("MONGO_URI"))
 db = client["sample_restaurants"]
 col = db["neighborhoods"]
 
-# Skalierung angepasst für New York Koordinaten
-SCALE = 10000 
-OFFSET_X = 740000 
-OFFSET_Y = -400000
+MIN_X, MAX_X = -74.3, -73.7
+MIN_Y, MAX_Y = 40.5, 41.0
+WIDTH, HEIGHT = 1000, 1000
+
+def get_pixel(long, lat):
+    x = int((long - MIN_X) / (MAX_X - MIN_X) * WIDTH)
+    # Y-Achse wird umgedreht, da Pixel (0,0) oben links ist
+    y = int((1 - (lat - MIN_Y) / (MAX_Y - MIN_Y)) * HEIGHT)
+    return (x, y)
 
 def draw_polygon(draw, coords, color):
     pixel_coords = []
     for c in coords:
-        # Sicherstellen, dass c wirklich die zwei Zahlen [long, lat] sind
         long = c[0]
         lat = c[1]
         
-        # Berechnung (Hier war das 'n' im Weg)
-        x = int((long * SCALE) + OFFSET_X)
-        y = int((lat * SCALE) + OFFSET_Y)
-        
-        pixel_coords.append((x, y))
+        pixel_coords.append(get_pixel(long, lat))
     
-    # Erst zeichnen, wenn genug Punkte da sind
     if len(pixel_coords) > 2:
-        draw.polygon(pixel_coords, outline=color)
+        draw.polygon(pixel_coords, outline=color, fill=None)
 
 def visualize_neighborhoods(single_only=False):
-    im = Image.new(mode="RGB", size=(1000, 1000), color="white")
+    im = Image.new(mode="RGB", size=(WIDTH, HEIGHT), color="white")
     draw = ImageDraw.Draw(im)
 
     if single_only:
         poly = col.find_one()
-        # Bei vielen GeoJSONs ist die Struktur: geometry -> coordinates -> [0]
-        draw_polygon(draw, poly["geometry"]["coordinates"][0], "blue")
+        if poly:
+            coords = poly["geometry"]["coordinates"][0]
+            draw_polygon(draw, coords, "blue")
     else:
         for poly in col.find():
             try:
                 coords = poly["geometry"]["coordinates"][0]
                 draw_polygon(draw, coords, "black")
-            except:
-                continue # Überspringe Dokumente, die keine gültigen Koordinaten haben
+            except Exception:
+                continue
 
     im.show()
+    im.save("neighborhoods_map.png")
+    print("Grafik wurde gespeichert als 'neighborhoods_map.png'")
 
 if __name__ == "__main__":
     visualize_neighborhoods(single_only=False)
