@@ -1,0 +1,2 @@
+ODM steht für Object Document Mapper.
+Funktion: Er dient als Übersetzer zwischen einer objektorientierten Programmiersprache (Python) und einer dokumentenorientierten Datenbank (MongoDB). Er bildet Datenbank-Dokumente auf Klassen/Objekte ab.
